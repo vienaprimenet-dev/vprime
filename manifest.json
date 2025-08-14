@@ -1,0 +1,9 @@
+{
+  "name": "Mapa Interativo com Raio",
+  "description": "Mapa com Leaflet para desenhar círculos/polígonos e filtrar pontos no Looker Studio",
+  "resources": {
+    "js": ["index.js"],
+    "css": ["style.css"]
+  },
+  "devMode": true
+}
