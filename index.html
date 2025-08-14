@@ -114,22 +114,26 @@ function updateCount() {
 
 // Adicionar ponto de medição
 function addMeasurePoint(latlng) {
-    measurePoints.push(latlng);
-    if (measurePoints.length > 1) {
-        const lastPoint = measurePoints[measurePoints.length - 2];
+    if (measurePoints.length > 0) {
+        const lastPoint = measurePoints[measurePoints.length - 1];
         const dist = lastPoint.distanceTo(latlng);
         totalDistance += dist;
-        if (tempLine) map.removeLayer(tempLine);
-        tempLine = L.polyline(measurePoints, { color: 'red' }).addTo(map);
         
-        // Mostra apenas o valor numérico da distância
-        const midIndex = Math.floor(measurePoints.length / 2);
-        const midLatLng = measurePoints[midIndex];
-        tempLine.bindTooltip(`${(totalDistance/1000).toFixed(2)} km`, 
+        // Cria segmento de linha com tooltip da distância individual
+        const segment = L.polyline([lastPoint, latlng], { color: 'red' }).addTo(map);
+        segment.bindTooltip(`${(dist/1000).toFixed(2)} km`, 
             {permanent: true, direction: 'center', className: "my-tooltip"}).openTooltip();
-        
-        updateCount();
     }
+    
+    measurePoints.push(latlng);
+    
+    // Atualiza a linha principal (sem tooltip)
+    if (tempLine) map.removeLayer(tempLine);
+    if (measurePoints.length > 1) {
+        tempLine = L.polyline(measurePoints, { color: 'red', weight: 2 }).addTo(map);
+    }
+    
+    updateCount();
 }
 
 // Botão para desenhar círculo
@@ -167,9 +171,17 @@ map.on(L.Draw.Event.CREATED, function(e) {
 // Botão medir distância
 document.getElementById("measureLine").addEventListener("click", () => {
     measureMode = !measureMode;
-    measurePoints = [];
-    totalDistance = 0;
-    if (tempLine) { map.removeLayer(tempLine); tempLine = null; }
+    if (!measureMode) {
+        measurePoints = [];
+        totalDistance = 0;
+        if (tempLine) { map.removeLayer(tempLine); tempLine = null; }
+        // Remove todos os segmentos de linha
+        map.eachLayer(layer => {
+            if (layer instanceof L.Polyline && layer.options.color === 'red') {
+                map.removeLayer(layer);
+            }
+        });
+    }
     alert(measureMode ? "Modo de medição ativado. Clique nos marcadores." : "Modo de medição desativado.");
     updateCount();
 });
@@ -182,6 +194,12 @@ document.getElementById("clearAll").addEventListener("click", () => {
     totalDistance = 0;
     measurePoints = [];
     measureMode = false;
+    // Remove todos os segmentos de linha
+    map.eachLayer(layer => {
+        if (layer instanceof L.Polyline && layer.options.color === 'red') {
+            map.removeLayer(layer);
+        }
+    });
     loadData(document.getElementById("filter").value);
 });
 
