@@ -44,7 +44,7 @@
 <script src="https://unpkg.com/papaparse@5.3.0/papaparse.min.js"></script>
 
 <script>
-const SHEET_ID = "1_fuH8vWVLWqYb3H3PD6OB7iNuq_gT_s5wOEb01POuaw"; // ID da planilha Google Sheets
+const SHEET_ID = "1_fuH8vWVLWqYb3H3PD6OB7iNuq_gT_s5wOEb01POuaw";
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/1_fuH8vWVLWqYb3H3PD6OB7iNuq_gT_s5wOEb01POuaw/gviz/tq?tqx=out:csv`;
 
 const map = L.map('map').setView([-23.55052, -46.633308], 5);
@@ -75,9 +75,9 @@ function loadData(filter = "Todos") {
                 if(row.Latitude && row.Longitude){
                     if(filter !== "Todos" && row.InfoExtra !== filter) return;
 
-                    const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)], {data: row, selected:false})
+                    const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)], {data: row, selected: false})
                         .bindPopup(`<b>${row.Nome}</b><br>${row.InfoExtra}`)
-                        .bindTooltip(row.Nome, {permanent:false, direction:"top"})
+                        .bindTooltip(row.Nome, {permanent: false, direction: "top"})
                         .on('click', function(){
                             if(!medirDistancia) return;
                             measurementPoints.push(this.getLatLng());
@@ -85,25 +85,25 @@ function loadData(filter = "Todos") {
                                 const last = measurementPoints[measurementPoints.length-1];
                                 const prev = measurementPoints[measurementPoints.length-2];
                                 const dist = prev.distanceTo(last);
-                                const distText = dist>=1000 ? (dist/1000).toFixed(2)+" km" : Math.round(dist)+" m";
+                                const distText = dist >= 1000 ? (dist/1000).toFixed(2) + " km" : Math.round(dist) + " m";
 
-                                const line = L.polyline([prev,last], {color:'blue'}).addTo(measurementLayer);
+                                const line = L.polyline([prev, last], {color: 'blue'}).addTo(measurementLayer);
 
                                 // Label no meio
                                 const midLat = (prev.lat + last.lat)/2;
                                 const midLng = (prev.lng + last.lng)/2;
                                 L.marker([midLat, midLng], {
                                     icon: L.divIcon({
-                                        className:'distance-label',
-                                        html:`<div style="background:white;padding:2px 4px;border:1px solid blue;border-radius:3px;">${distText}</div>`
+                                        className: 'distance-label',
+                                        html: `<div style="background:white;padding:2px 4px;border:1px solid blue;border-radius:3px;">${distText}</div>`
                                     }),
-                                    interactive:false
+                                    interactive: false
                                 }).addTo(measurementLayer);
 
                                 distances.push(dist);
-                                const totalDist = distances.reduce((a,b)=>a+b,0);
-                                const totalText = totalDist>=1000 ? (totalDist/1000).toFixed(2)+" km" : Math.round(totalDist)+" m";
-                                document.getElementById("distances").innerText = ` | Distância total do círculo: ${totalText}`;
+                                const totalDist = distances.reduce((a,b) => a+b, 0);
+                                const totalText = totalDist >= 1000 ? (totalDist/1000).toFixed(2) + " km" : Math.round(totalDist) + " m";
+                                document.getElementById("distances").innerText = ` | Distância total: ${totalText}`;
                             }
                         });
                     markerGroup.addLayer(marker);
@@ -115,8 +115,8 @@ function loadData(filter = "Todos") {
     });
 }
 
-function updateCircleSelection(){
-    if(!currentCircle){
+function updateCircleSelection() {
+    if(!currentCircle) {
         document.getElementById("count").innerText = ` | Pontos: ${markers.length}`;
         return;
     }
@@ -126,34 +126,28 @@ function updateCircleSelection(){
 
     // Atualiza seleção e cor
     markers.forEach(m => {
-        if(selecionados.includes(m)){
+        if(selecionados.includes(m)) {
             m.selected = true;
-            m.setIcon(L.icon({iconUrl:'https://maps.google.com/mapfiles/ms/icons/green-dot.png', iconSize:[32,32]}));
+            m.setIcon(L.icon({iconUrl: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png', iconSize: [32,32]}));
         } else {
             m.selected = false;
             m.setIcon(new L.Icon.Default());
         }
     });
 
-  // Tooltip do Circulo
-  const distanceLabel = L.marker([midLat, midLng], {
-    icon: L.divIcon({
-        className: 'distance-label',
-        html: `<div style="background:white;padding:2px 4px;border:1px solid blue;border-radius:3px;text-align:center;white-space:nowrap;">${distText}</div>`
-    }),
-    interactive:false
-}).addTo(measurementLayer);
-
-  // Remove tooltip antigo
-if(currentCircle.tooltipMarker) map.removeLayer(currentCircle.tooltipMarker);
-
-const tooltipLatLng = L.latLng(currentCircle.getBounds().getNorth(), currentCircle.getBounds().getEast());
-currentCircle.tooltipMarker = L.marker(tooltipLatLng, {
-    icon: L.divIcon({className:'circle-tooltip', html:`<div style="background:white;padding:4px;border:1px solid gray;border-radius:4px;">Pontos no raio: ${selecionados.length}<br>${nomes}</div>`})
-}).addTo(map);
+    // Atualiza tooltip do círculo
+    const nomes = selecionados.map(m => m.data.Nome).join("<br>");
+    if(currentCircle.tooltipMarker) map.removeLayer(currentCircle.tooltipMarker);
+    const tooltipLatLng = L.latLng(currentCircle.getBounds().getNorth(), currentCircle.getBounds().getEast());
+    currentCircle.tooltipMarker = L.marker(tooltipLatLng, {
+        icon: L.divIcon({
+            className: 'circle-tooltip',
+            html: `<div style="background:white;padding:4px;border:1px solid gray;border-radius:4px;">Pontos no raio: ${selecionados.length}<br>${nomes}</div>`
+        })
+    }).addTo(map);
 
     // Zoom automático
-    if(selecionados.length>0){
+    if(selecionados.length > 0) {
         const group = L.featureGroup(selecionados);
         map.fitBounds(group.getBounds().pad(0.2));
     }
@@ -161,62 +155,87 @@ currentCircle.tooltipMarker = L.marker(tooltipLatLng, {
     document.getElementById("count").innerText = ` | Pontos no raio: ${selecionados.length}`;
 }
 
+// --- Exibir raio do círculo ao clicar ---
+function bindCirclePopup(circle) {
+    const radiusKm = (circle.getRadius() / 1000).toFixed(2); // Convert meters to kilometers
+    circle.bindPopup(`Raio do círculo: ${radiusKm} km`).openPopup();
+}
+
 // --- Botões ---
-document.getElementById("btnLimpar").addEventListener("click", ()=>{
-    if(currentCircle){ map.removeLayer(currentCircle); currentCircle=null; }
+document.getElementById("btnLimpar").addEventListener("click", () => {
+    if(currentCircle) { 
+        map.removeLayer(currentCircle); 
+        currentCircle = null; 
+    }
     markerGroup.eachLayer(m => m.setIcon(new L.Icon.Default()));
     measurementLayer.clearLayers();
-    measurementPoints=[];
-    distances=[];
-    document.getElementById("distances").innerText="";
-    medirDistancia=false;
+    measurementPoints = [];
+    distances = [];
+    document.getElementById("distances").innerText = "";
+    medirDistancia = false;
     updateCircleSelection();
 });
 
-document.getElementById("btnExport").addEventListener("click", ()=>{
+document.getElementById("btnExport").addEventListener("click", () => {
     if(!currentCircle) return alert("Desenhe um raio primeiro!");
     const center = currentCircle.getLatLng();
     const radius = currentCircle.getRadius();
     const selecionados = markers.filter(m => center.distanceTo(m.getLatLng()) <= radius);
-    if(selecionados.length===0) return alert("Nenhum ponto selecionado!");
-    const csvContent = "data:text/csv;charset=utf-8," + 
-        selecionados.map(e => Object.values(e.data).join(",")).join("\n");
+    if(selecionados.length === 0) return alert("Nenhum ponto selecionado!");
+
+    // Preparar dados para CSV com cabeçalhos
+    const headers = Object.keys(selecionados[0].data);
+    let csvContent = headers.join(",") + "\n";
+    selecionados.forEach(m => {
+        const row = headers.map(header => {
+            let value = m.data[header] || "";
+            value = value.toString().replace(/"/g, '""'); // Escapa aspas
+            return `"${value}"`; // Envolve valores em aspas
+        }).join(",");
+        csvContent += row + "\n";
+    });
+
+    // Criar e baixar CSV
     const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
-    link.setAttribute("download","pontos_selecionados.csv");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    link.setAttribute("href", URL.createObjectURL(blob));
+    link.setAttribute("download", "pontos_selecionados.csv");
     document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
 });
 
-document.getElementById("btnMedir").addEventListener("click", ()=>{
+document.getElementById("btnMedir").addEventListener("click", () => {
     medirDistancia = !medirDistancia;
     measurementPoints = [];
-    distances=[];
+    distances = [];
     measurementLayer.clearLayers();
-    document.getElementById("distances").innerText="";
+    document.getElementById("distances").innerText = "";
     if(medirDistancia) alert("Clique nos marcadores para medir a distância entre eles.");
 });
 
 // --- Controle de desenho ---
 const drawControl = new L.Control.Draw({
     draw: {
-        marker:false, polygon:false, polyline:false, rectangle:false, circle:true, circlemarker:false
+        marker: false, polygon: false, polyline: false, rectangle: false, circle: true, circlemarker: false
     },
     edit: { featureGroup: new L.FeatureGroup().addTo(map) }
 });
 map.addControl(drawControl);
 
 // --- Evento ao criar círculo ---
-map.on(L.Draw.Event.CREATED, function(e){
+map.on(L.Draw.Event.CREATED, function(e) {
     if(currentCircle) map.removeLayer(currentCircle);
     currentCircle = e.layer;
     currentCircle.addTo(map);
     currentCircle.on('edit', updateCircleSelection);
+    currentCircle.on('click', () => bindCirclePopup(currentCircle)); // Adiciona popup ao clicar
+    bindCirclePopup(currentCircle); // Exibe popup imediatamente após criação
     updateCircleSelection();
 });
 
 // --- Filtro ---
-document.getElementById("filter").addEventListener("change", function(){
+document.getElementById("filter").addEventListener("change", function() {
     loadData(this.value);
 });
 
