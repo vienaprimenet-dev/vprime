@@ -183,10 +183,25 @@ map.on('click', function(e){
     if(measurementPoints.length > 1){
         const last = measurementPoints[measurementPoints.length-1];
         const prev = measurementPoints[measurementPoints.length-2];
+        const dist = prev.distanceTo(last); // em metros
+        const distText = dist >= 1000 ? (dist/1000).toFixed(2) + " km" : Math.round(dist) + " m";
+        
+        // Cria linha
         const line = L.polyline([prev,last], {color:'blue'}).addTo(measurementLayer);
-        const dist = prev.distanceTo(last)/1000; // km
-        distances.push(dist.toFixed(2));
-        document.getElementById("distances").innerText = ` | Distâncias (km): ${distances.join(", ")}`;
+
+        // Cria label no meio da linha
+        const midLat = (prev.lat + last.lat)/2;
+        const midLng = (prev.lng + last.lng)/2;
+        const distanceLabel = L.marker([midLat, midLng], {
+            icon: L.divIcon({
+                className: 'distance-label',
+                html: `<div style="background:white;padding:2px 4px;border:1px solid blue;border-radius:3px;">${distText}</div>`
+            }),
+            interactive: false
+        }).addTo(measurementLayer);
+
+        distances.push(distText);
+        document.getElementById("distances").innerText = ` | Distâncias: ${distances.join(", ")}`;
     }
 });
 </script>
