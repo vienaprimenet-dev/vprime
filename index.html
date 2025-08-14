@@ -1,192 +1,172 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html>
 <head>
-<meta charset="utf-8">
-<title>Mapa Interativo Avançado</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css"/>
-<style>
-  #map { height: 100vh; }
-  .filter-box {
-    position: absolute;
-    top: 10px;
-    left: 50px;
-    z-index: 1000;
-    background: white;
-    padding: 8px;
-    border-radius: 5px;
-    font-family: Arial, sans-serif;
-    box-shadow: 0px 2px 6px rgba(0,0,0,0.3);
-  }
-  .leaflet-tooltip.my-tooltip {
-    background: white;
-    color: black;
-    border: 1px solid #333;
-    font-size: 12px;
-    padding: 4px;
-  }
-</style>
+  <meta charset="utf-8">
+  <title>Mapa com Raio e Medição</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    #map { height: 100vh; }
+    .control-buttons {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 8px;
+      border-radius: 6px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    .small-purple-dot {
+      background: purple;
+      border-radius: 50%;
+      width: 10px;
+      height: 10px;
+      border: 2px solid white;
+    }
+  </style>
 </head>
 <body>
 
-<div class="filter-box">
-  <label>Filtrar por tipo:</label>
-  <select id="filter">
-    <option value="Todos">Todos</option>
-    <option value="Cliente VIP">Cliente VIP</option>
-    <option value="Cliente Regular">Cliente Regular</option>
-  </select>
-  <button id="drawCircle">Desenhar Círculo</button>
-  <button id="measureLine">Medir Distância</button>
-  <button id="clearAll">Limpar Tudo</button>
-  <button id="exportCSV">Exportar CSV</button>
-  <span id="count"></span>
-</div>
-
 <div id="map"></div>
 
+<div class="control-buttons">
+  <button id="drawRadius">Desenhar Raio</button>
+  <button id="drawLine">Medição de Distância</button>
+  <button id="clearAll">Limpar Tudo</button>
+  <button id="exportCSV">Exportar CSV (Raio)</button>
+</div>
+
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
-<script src="https://unpkg.com/papaparse@5.3.0/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 
 <script>
-const SHEET_URL = "https://docs.google.com/spreadsheets/d/1_fuH8vWVLWqYb3H3PD6OB7iNuq_gT_s5wOEb01POuaw/export?format=csv";
-
-const map = L.map('map').setView([-23.55052, -46.633308], 5);
+// Inicializa mapa
+const map = L.map('map').setView([-3.4653, -62.2159], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
+  maxZoom: 19
 }).addTo(map);
 
+// Variáveis globais
 let markers = [];
-let markerGroup = L.featureGroup().addTo(map);
-let currentCircle = null;
-let drawnItems = new L.FeatureGroup().addTo(map);
-let measureMode = false;
-let tempLine = null;
-let measurePoints = [];
+let radiusCircle = null;
+let centerMarker = null;
+let distanceMarkers = [];
+let distanceLine = null;
 let totalDistance = 0;
+let selectedPointsInRadius = [];
 
-// Carregar dados da planilha
-function loadData(filter = "Todos") {
-    markerGroup.clearLayers();
-    markers = [];
-    Papa.parse(SHEET_URL, {
-        download: true,
-        header: true,
-        complete: function(results) {
-            results.data.forEach(row => {
-                if (row.Latitude && row.Longitude) {
-                    if (filter !== "Todos" && row.InfoExtra !== filter) return;
-
-                    const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)]);
-                    marker.on('click', () => {
-                        marker.bindPopup(`<b>${row.Nome}</b><br>${row.InfoExtra}`).openPopup();
-                        if (measureMode) addMeasurePoint(marker.getLatLng());
-                    });
-                    markerGroup.addLayer(marker);
-                    markers.push({ marker, data: row });
-                }
-            });
-            updateCount();
+// Função para carregar dados da planilha Google
+function loadGoogleSheetData() {
+  const sheetID = "1_fuH8vWVLWqYb3H3PD6OB7iNuq_gT_s5wOEb01POuaw";
+  const sheetURL = `https://docs.google.com/spreadsheets/d/${sheetID}/gviz/tq?tqx=out:csv`;
+  
+  Papa.parse(sheetURL, {
+    download: true,
+    header: true,
+    complete: function(results) {
+      results.data.forEach(row => {
+        if(row.lat && row.lng) {
+          const marker = L.marker([parseFloat(row.lat), parseFloat(row.lng)])
+            .on('click', () => {
+              marker.bindPopup(`<b>${row.nome || 'Sem nome'}</b>`).openPopup();
+            })
+            .addTo(map);
+          markers.push({ marker, data: row });
         }
+      });
+    }
+  });
+}
+
+// Botão: Desenhar Raio
+document.getElementById('drawRadius').addEventListener('click', () => {
+  map.once('click', function(e) {
+    const center = e.latlng;
+    const radius = prompt("Digite o raio em metros:", 500);
+    if(!radius) return;
+
+    if(radiusCircle) {
+      map.removeLayer(radiusCircle);
+      map.removeLayer(centerMarker);
+    }
+
+    radiusCircle = L.circle(center, { radius: parseFloat(radius), color: 'blue', fillColor: 'blue', fillOpacity: 0.2 }).addTo(map);
+
+    centerMarker = L.marker(center, {
+      icon: L.divIcon({ className: 'small-purple-dot' })
+    }).addTo(map);
+
+    // Selecionar pontos dentro do raio
+    selectedPointsInRadius = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius);
+
+    radiusCircle.on('click', () => {
+      const tooltipLatLng = L.latLng(center.lat, center.lng + 0.0008);
+      const tooltip = L.tooltip()
+        .setLatLng(tooltipLatLng)
+        .setContent(`Raio: ${radius} m<br>Pontos: ${selectedPointsInRadius.length}`)
+        .addTo(map);
+
+      setTimeout(() => map.removeLayer(tooltip), 3000);
     });
+  });
+});
+
+// Botão: Medir Distância
+document.getElementById('drawLine').addEventListener('click', () => {
+  distanceMarkers = [];
+  totalDistance = 0;
+  map.on('click', addDistanceMarker);
+});
+
+function addDistanceMarker(e) {
+  const marker = L.marker(e.latlng).addTo(map);
+  distanceMarkers.push(marker);
+
+  if(distanceMarkers.length > 1) {
+    const last = distanceMarkers[distanceMarkers.length - 2].getLatLng();
+    const curr = e.latlng;
+    const segmentDistance = last.distanceTo(curr);
+    totalDistance += segmentDistance;
+
+    if(distanceLine) map.removeLayer(distanceLine);
+    const linePoints = distanceMarkers.map(m => m.getLatLng());
+    distanceLine = L.polyline(linePoints, { color: 'red' }).addTo(map);
+
+    const midLat = (last.lat + curr.lat) / 2;
+    const midLng = (last.lng + curr.lng) / 2;
+    L.marker([midLat, midLng], {
+      icon: L.divIcon({ className: 'distance-label', html: `${segmentDistance.toFixed(1)} m` })
+    }).addTo(map);
+  }
 }
 
-// Atualiza contagem de pontos no raio
-function updateCount() {
-    if (!currentCircle) {
-        document.getElementById("count").innerText = ` | Pontos: ${markers.length}`;
-        return;
-    }
-    const center = currentCircle.getLatLng();
-    const radius = currentCircle.getRadius();
-    const selecionados = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius);
-    document.getElementById("count").innerText = ` | Pontos no raio: ${selecionados.length}`;
-
-    // Tooltip externo
-    const raioTexto = radius >= 1000 ? (radius/1000).toFixed(2) + " km" : radius.toFixed(0) + " m";
-    currentCircle.bindTooltip(
-        `Raio: ${raioTexto}<br>Pontos: ${selecionados.length}`,
-        { permanent: true, direction: "top", className: "my-tooltip" }
-    ).openTooltip();
-}
-
-// Adicionar ponto de medição
-function addMeasurePoint(latlng) {
-    measurePoints.push(latlng);
-    if (measurePoints.length > 1) {
-        const lastPoint = measurePoints[measurePoints.length - 2];
-        const dist = lastPoint.distanceTo(latlng);
-        totalDistance += dist;
-        if (tempLine) map.removeLayer(tempLine);
-        tempLine = L.polyline(measurePoints, { color: 'red' }).addTo(map);
-        const midIndex = Math.floor(measurePoints.length / 2);
-        const midLatLng = measurePoints[midIndex];
-        tempLine.bindTooltip(`Distância total: ${(totalDistance/1000).toFixed(2)} km`, 
-            {permanent: true, direction: 'center', className: "my-tooltip"}).openTooltip();
-    }
-}
-
-// Botão para desenhar círculo
-document.getElementById("drawCircle").addEventListener("click", () => {
-    new L.Draw.Circle(map, { shapeOptions: { color: 'blue' } }).enable();
+// Botão: Limpar Tudo
+document.getElementById('clearAll').addEventListener('click', () => {
+  if(radiusCircle) map.removeLayer(radiusCircle);
+  if(centerMarker) map.removeLayer(centerMarker);
+  if(distanceLine) map.removeLayer(distanceLine);
+  distanceMarkers.forEach(m => map.removeLayer(m));
+  distanceMarkers = [];
+  totalDistance = 0;
 });
 
-// Evento ao criar círculo
-map.on(L.Draw.Event.CREATED, function(e) {
-    if (e.layerType === 'circle') {
-        if (currentCircle) map.removeLayer(currentCircle);
-        currentCircle = e.layer;
-        map.addLayer(currentCircle);
-        updateCount();
-    }
+// Botão: Exportar CSV
+document.getElementById('exportCSV').addEventListener('click', () => {
+  if(selectedPointsInRadius.length === 0) {
+    alert("Nenhum ponto selecionado no raio.");
+    return;
+  }
+  const csvData = selectedPointsInRadius.map(p => p.data);
+  const csv = Papa.unparse(csvData);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "pontos_no_raio.csv";
+  link.click();
 });
 
-// Botão medir distância
-document.getElementById("measureLine").addEventListener("click", () => {
-    measureMode = !measureMode;
-    measurePoints = [];
-    totalDistance = 0;
-    if (tempLine) { map.removeLayer(tempLine); tempLine = null; }
-    alert(measureMode ? "Modo de medição ativado. Clique nos marcadores." : "Modo de medição desativado.");
-});
-
-// Botão limpar tudo
-document.getElementById("clearAll").addEventListener("click", () => {
-    markerGroup.clearLayers();
-    if (currentCircle) { map.removeLayer(currentCircle); currentCircle = null; }
-    if (tempLine) { map.removeLayer(tempLine); tempLine = null; }
-    totalDistance = 0;
-    measurePoints = [];
-    loadData(document.getElementById("filter").value);
-});
-
-// Exportar CSV dos pontos dentro do raio
-document.getElementById("exportCSV").addEventListener("click", () => {
-    if (!currentCircle) return alert("Desenhe um círculo primeiro!");
-    const center = currentCircle.getLatLng();
-    const radius = currentCircle.getRadius();
-    const selecionados = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius)
-                                .map(m => m.data);
-    if (selecionados.length === 0) return alert("Nenhum ponto no raio.");
-    const csv = Papa.unparse(selecionados);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "pontos_raio.csv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-});
-
-// Evento filtro
-document.getElementById("filter").addEventListener("change", function() {
-    loadData(this.value);
-});
-
-// Carrega dados inicialmente
-loadData();
+loadGoogleSheetData();
 </script>
 
 </body>
