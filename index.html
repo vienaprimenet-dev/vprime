@@ -135,7 +135,16 @@ function updateCircleSelection(){
         }
     });
 
-   // Remove tooltip antigo
+  // Tooltip do Circulo
+  const distanceLabel = L.marker([midLat, midLng], {
+    icon: L.divIcon({
+        className: 'distance-label',
+        html: `<div style="background:white;padding:2px 4px;border:1px solid blue;border-radius:3px;text-align:center;white-space:nowrap;">${distText}</div>`
+    }),
+    interactive:false
+}).addTo(measurementLayer);
+
+  // Remove tooltip antigo
 if(currentCircle.tooltipMarker) map.removeLayer(currentCircle.tooltipMarker);
 
 const tooltipLatLng = L.latLng(currentCircle.getBounds().getNorth(), currentCircle.getBounds().getEast());
