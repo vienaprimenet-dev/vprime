@@ -2,14 +2,35 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Mapa Interativo com Google Sheets</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<title>Mapa Interativo Avançado - Leaflet</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css"/>
 <style>
   #map { height: 100vh; }
+  .filter-box {
+    position: absolute;
+    top: 10px;
+    left: 50px;
+    z-index: 1000;
+    background: white;
+    padding: 8px;
+    border-radius: 5px;
+    font-family: Arial, sans-serif;
+    box-shadow: 0px 2px 6px rgba(0,0,0,0.3);
+  }
 </style>
 </head>
 <body>
+
+<div class="filter-box">
+  <label>Filtrar por tipo:</label>
+  <select id="filter">
+    <option value="Todos">Todos</option>
+    <option value="Cliente VIP">Cliente VIP</option>
+    <option value="Cliente Regular">Cliente Regular</option>
+  </select>
+  <span id="count"></span>
+</div>
 
 <div id="map"></div>
 
@@ -18,33 +39,54 @@
 <script src="https://unpkg.com/papaparse@5.3.0/papaparse.min.js"></script>
 
 <script>
-const SHEET_ID = "1_fuH8vWVLWqYb3H3PD6OB7iNuq_gT_s5wOEb01POuaw"; // Substituir pelo ID real da planilha
+const SHEET_ID = "1_fuH8vWVLWqYb3H3PD6OB7iNuq_gT_s5wOEb01POuaw"; // ID da planilha Google Sheets
 const SHEET_URL = `https://docs.google.com/spreadsheets/d/1_fuH8vWVLWqYb3H3PD6OB7iNuq_gT_s5wOEb01POuaw/gviz/tq?tqx=out:csv`;
 
 const map = L.map('map').setView([-23.55052, -46.633308], 5);
-
-// Adiciona mapa base
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
 let markers = [];
+let markerGroup = L.featureGroup().addTo(map);
+let currentCircle = null;
 
-// Função para carregar dados
-Papa.parse(SHEET_URL, {
-    download: true,
-    header: true,
-    complete: function(results) {
-        results.data.forEach(row => {
-            if(row.Latitude && row.Longitude) {
-                const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)])
-                    .bindPopup(`<b>${row.Nome}</b><br>${row.InfoExtra}`)
-                    .addTo(map);
-                markers.push(marker);
-            }
-        });
+// Carregar dados da planilha
+function loadData(filter = "Todos") {
+    markerGroup.clearLayers();
+    markers = [];
+
+    Papa.parse(SHEET_URL, {
+        download: true,
+        header: true,
+        complete: function(results) {
+            results.data.forEach(row => {
+                if (row.Latitude && row.Longitude) {
+                    if (filter !== "Todos" && row.InfoExtra !== filter) return;
+
+                    const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)])
+                        .bindPopup(`<b>${row.Nome}</b><br>${row.InfoExtra}`)
+                        .bindTooltip(row.Nome, {permanent: false, direction: "top"});
+                    markerGroup.addLayer(marker);
+                    markers.push(marker);
+                }
+            });
+            updateCount();
+        }
+    });
+}
+
+// Atualiza contagem de pontos no raio
+function updateCount() {
+    if (!currentCircle) {
+        document.getElementById("count").innerText = ` | Pontos: ${markers.length}`;
+        return;
     }
-});
+    const center = currentCircle.getLatLng();
+    const radius = currentCircle.getRadius();
+    const selecionados = markers.filter(m => center.distanceTo(m.getLatLng()) <= radius);
+    document.getElementById("count").innerText = ` | Pontos no raio: ${selecionados.length}`;
+}
 
 // Controle de desenho
 const drawControl = new L.Control.Draw({
@@ -53,7 +95,7 @@ const drawControl = new L.Control.Draw({
         polygon: false,
         polyline: false,
         rectangle: false,
-        circle: true,  // habilita raio
+        circle: true,
         circlemarker: false
     },
     edit: {
@@ -62,24 +104,24 @@ const drawControl = new L.Control.Draw({
 });
 map.addControl(drawControl);
 
-// Evento ao desenhar
-map.on(L.Draw.Event.CREATED, function (e) {
-    const layer = e.layer;
-    if (e.layerType === 'circle') {
-        const center = layer.getLatLng();
-        const radius = layer.getRadius();
+// Evento ao criar círculo
+map.on(L.Draw.Event.CREATED, function(e) {
+    if (currentCircle) map.removeLayer(currentCircle);
+    currentCircle = e.layer;
+    currentCircle.addTo(map);
 
-        // Seleciona marcadores dentro do raio
-        let selecionados = markers.filter(m => {
-            return center.distanceTo(m.getLatLng()) <= radius;
-        });
-
-        // Mostra resultado
-        let lista = selecionados.map(m => m.getPopup().getContent()).join("<hr>");
-        layer.bindPopup(`<b>Pontos no raio:</b><br>${lista}`).openPopup();
-    }
-    layer.addTo(map);
+    // Permite arrastar e redimensionar
+    currentCircle.on('edit', updateCount);
+    updateCount();
 });
+
+// Evento para mudar filtro
+document.getElementById("filter").addEventListener("change", function() {
+    loadData(this.value);
+});
+
+// Carrega dados inicialmente
+loadData();
 </script>
 
 </body>
