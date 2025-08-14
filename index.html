@@ -135,9 +135,13 @@ function updateCircleSelection(){
         }
     });
 
-    // Tooltip do círculo
-    const nomes = selecionados.map(m => m.options.data.Nome).join("<br>");
-    currentCircle.bindTooltip(`Pontos no raio: ${selecionados.length}<br>${nomes}`, {permanent:true}).openTooltip();
+   // Remove tooltip antigo
+if(currentCircle.tooltipMarker) map.removeLayer(currentCircle.tooltipMarker);
+
+const tooltipLatLng = L.latLng(currentCircle.getBounds().getNorth(), currentCircle.getBounds().getEast());
+currentCircle.tooltipMarker = L.marker(tooltipLatLng, {
+    icon: L.divIcon({className:'circle-tooltip', html:`<div style="background:white;padding:4px;border:1px solid gray;border-radius:4px;">Pontos no raio: ${selecionados.length}<br>${nomes}</div>`})
+}).addTo(map);
 
     // Zoom automático
     if(selecionados.length>0){
