@@ -18,6 +18,7 @@
     font-family: Arial, sans-serif;
     box-shadow: 0px 2px 6px rgba(0,0,0,0.3);
   }
+  .filter-box button { margin-left: 5px; }
 </style>
 </head>
 <body>
@@ -29,7 +30,10 @@
     <option value="Cliente VIP">Cliente VIP</option>
     <option value="Cliente Regular">Cliente Regular</option>
   </select>
+  <button id="btnLimpar">Limpar tudo</button>
+  <button id="btnExport">Exportar CSV</button>
   <span id="count"></span>
+  <span id="distances"></span>
 </div>
 
 <div id="map"></div>
@@ -51,6 +55,11 @@ let markers = [];
 let markerGroup = L.featureGroup().addTo(map);
 let currentCircle = null;
 
+// Para medições de distância
+let measurementLayer = L.featureGroup().addTo(map);
+let measurementPoints = [];
+let distances = [];
+
 // Carregar dados da planilha
 function loadData(filter = "Todos") {
     markerGroup.clearLayers();
@@ -64,7 +73,7 @@ function loadData(filter = "Todos") {
                 if (row.Latitude && row.Longitude) {
                     if (filter !== "Todos" && row.InfoExtra !== filter) return;
 
-                    const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)])
+                    const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)], {data: row})
                         .bindPopup(`<b>${row.Nome}</b><br>${row.InfoExtra}`)
                         .bindTooltip(row.Nome, {permanent: false, direction: "top"});
                     markerGroup.addLayer(marker);
@@ -88,41 +97,28 @@ function updateCount() {
     document.getElementById("count").innerText = ` | Pontos no raio: ${selecionados.length}`;
 }
 
-// Controle de desenho
-const drawControl = new L.Control.Draw({
-    draw: {
-        marker: false,
-        polygon: false,
-        polyline: false,
-        rectangle: false,
-        circle: true,
-        circlemarker: false
-    },
-    edit: {
-        featureGroup: new L.FeatureGroup().addTo(map)
-    }
-});
-map.addControl(drawControl);
+// Função para baixar CSV
+function downloadCSV(data) {
+    if (data.length === 0) return alert("Nenhum ponto selecionado!");
+    const csvContent = "data:text/csv;charset=utf-8," + 
+        data.map(e => Object.values(e.data).join(",")).join("\n");
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", "pontos_selecionados.csv");
+    document.body.appendChild(link);
+    link.click();
+}
 
-// Evento ao criar círculo
-map.on(L.Draw.Event.CREATED, function(e) {
-    if (currentCircle) map.removeLayer(currentCircle);
-    currentCircle = e.layer;
-    currentCircle.addTo(map);
-
-    // Permite arrastar e redimensionar
-    currentCircle.on('edit', updateCount);
+// Botão limpar tudo
+document.getElementById("btnLimpar").addEventListener("click", ()=>{
+    if(currentCircle) { map.removeLayer(currentCircle); currentCircle = null; }
+    markerGroup.eachLayer(m => m.setIcon(new L.Icon.Default()));
+    measurementLayer.clearLayers();
+    measurementPoints = [];
+    distances = [];
     updateCount();
+    document.getElementById("distances").innerText = "";
 });
 
-// Evento para mudar filtro
-document.getElementById("filter").addEventListener("change", function() {
-    loadData(this.value);
-});
-
-// Carrega dados inicialmente
-loadData();
-</script>
-
-</body>
-</html>
+// Botão exportar CSV
+docume
