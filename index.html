@@ -25,6 +25,9 @@
     font-size: 12px;
     padding: 4px;
   }
+  .selected-marker {
+    filter: hue-rotate(90deg) brightness(1.2);
+  }
 </style>
 </head>
 <body>
@@ -78,11 +81,24 @@ function loadData(filter = "Todos") {
                 if (row.Latitude && row.Longitude) {
                     if (filter !== "Todos" && row.InfoExtra !== filter) return;
 
-                    const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)]);
-                    marker.on('click', () => {
-                        marker.bindPopup(`<b>${row.Nome}</b><br>${row.InfoExtra}`).openPopup();
+                    const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)], {
+                        // Adiciona um ID único para cada marcador
+                        customId: row.Nome
+                    });
+                    
+                    // Cria popup com as informações
+                    const popupContent = `<b>${row.Nome}</b><br>${row.InfoExtra}`;
+                    marker.bindPopup(popupContent);
+                    
+                    // Evento de clique melhorado
+                    marker.on('click', function(e) {
+                        // Fecha todos os popups primeiro
+                        map.closePopup();
+                        // Abre o popup do marcador clicado
+                        this.openPopup();
                         if (measureMode) addMeasurePoint(marker.getLatLng());
                     });
+                    
                     markerGroup.addLayer(marker);
                     markers.push({ marker, data: row });
                 }
@@ -92,18 +108,32 @@ function loadData(filter = "Todos") {
     });
 }
 
-// Atualiza contagem de pontos no raio
+// Atualiza contagem de pontos no raio e marca os selecionados
 function updateCount() {
+    // Reseta todos os marcadores para cor original
+    markers.forEach(m => {
+        m.marker.setIcon(L.Icon.Default.prototype);
+    });
+
     if (!currentCircle) {
         document.getElementById("count").innerText = `Pontos: ${markers.length}${measureMode ? ` | Distância Total: ${(totalDistance/1000).toFixed(2)} km` : ''}`;
         return;
     }
+
     const center = currentCircle.getLatLng();
     const radius = currentCircle.getRadius();
     const selecionados = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius);
+    
+    // Muda a cor dos marcadores selecionados para verde
+    selecionados.forEach(m => {
+        m.marker.setIcon(new L.Icon.Default({
+            className: 'selected-marker'
+        }));
+    });
+
     document.getElementById("count").innerText = `Pontos: ${selecionados.length}${measureMode ? ` | Distância Total: ${(totalDistance/1000).toFixed(2)} km` : ''}`;
 
-    // Atualiza o conteúdo do tooltip (mas não o abre)
+    // Atualiza o conteúdo do tooltip do círculo
     const raioTexto = radius >= 1000 ? (radius/1000).toFixed(2) + " km" : radius.toFixed(0) + " m";
     if (currentCircle.getTooltip()) {
         currentCircle.setTooltipContent(
@@ -225,6 +255,11 @@ document.getElementById("exportCSV").addEventListener("click", () => {
 // Evento filtro
 document.getElementById("filter").addEventListener("change", function() {
     loadData(this.value);
+});
+
+// Fechar popups ao clicar no mapa
+map.on('click', function() {
+    map.closePopup();
 });
 
 // Carrega dados inicialmente
