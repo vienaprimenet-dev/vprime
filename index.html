@@ -55,7 +55,7 @@ let markers = [];
 let markerGroup = L.featureGroup().addTo(map);
 let currentCircle = null;
 
-// Para medições de distância
+// Medições de distância
 let measurementLayer = L.featureGroup().addTo(map);
 let measurementPoints = [];
 let distances = [];
@@ -73,20 +73,20 @@ function loadData(filter = "Todos") {
                 if (row.Latitude && row.Longitude) {
                     if (filter !== "Todos" && row.InfoExtra !== filter) return;
 
-                    const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)], {data: row})
+                    const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)], {data: row, selected:false})
                         .bindPopup(`<b>${row.Nome}</b><br>${row.InfoExtra}`)
-                        .bindTooltip(row.Nome, {permanent: false, direction: "top"});
+                        .bindTooltip(row.Nome, {permanent:false, direction:"top"});
                     markerGroup.addLayer(marker);
                     markers.push(marker);
                 }
             });
-            updateCount();
+            updateCircleSelection();
         }
     });
 }
 
-// Atualiza contagem de pontos no raio
-function updateCount() {
+// Atualiza contagem e tooltip do círculo
+function updateCircleSelection() {
     if (!currentCircle) {
         document.getElementById("count").innerText = ` | Pontos: ${markers.length}`;
         return;
@@ -94,12 +94,34 @@ function updateCount() {
     const center = currentCircle.getLatLng();
     const radius = currentCircle.getRadius();
     const selecionados = markers.filter(m => center.distanceTo(m.getLatLng()) <= radius);
+    
+    // Atualiza seleção e cor
+    markers.forEach(m => {
+        if (selecionados.includes(m)) {
+            m.selected = true;
+            m.setIcon(L.icon({iconUrl:'https://maps.google.com/mapfiles/ms/icons/green-dot.png', iconSize:[32,32]}));
+        } else {
+            m.selected = false;
+            m.setIcon(new L.Icon.Default());
+        }
+    });
+
+    // Atualiza tooltip do círculo
+    const nomes = selecionados.map(m => m.options.data.Nome).join(", ");
+    currentCircle.bindTooltip(`Pontos no raio: ${selecionados.length}<br>${nomes}`, {permanent:true}).openTooltip();
+
+    // Ajusta zoom para englobar pontos selecionados
+    if(selecionados.length > 0){
+        const group = L.featureGroup(selecionados);
+        map.fitBounds(group.getBounds().pad(0.2));
+    }
+
     document.getElementById("count").innerText = ` | Pontos no raio: ${selecionados.length}`;
 }
 
 // Função para baixar CSV
 function downloadCSV(data) {
-    if (data.length === 0) return alert("Nenhum ponto selecionado!");
+    if(data.length === 0) return alert("Nenhum ponto selecionado!");
     const csvContent = "data:text/csv;charset=utf-8," + 
         data.map(e => Object.values(e.data).join(",")).join("\n");
     const link = document.createElement("a");
@@ -111,14 +133,63 @@ function downloadCSV(data) {
 
 // Botão limpar tudo
 document.getElementById("btnLimpar").addEventListener("click", ()=>{
-    if(currentCircle) { map.removeLayer(currentCircle); currentCircle = null; }
+    if(currentCircle){ map.removeLayer(currentCircle); currentCircle=null; }
     markerGroup.eachLayer(m => m.setIcon(new L.Icon.Default()));
     measurementLayer.clearLayers();
     measurementPoints = [];
     distances = [];
-    updateCount();
     document.getElementById("distances").innerText = "";
+    updateCircleSelection();
 });
 
 // Botão exportar CSV
-docume
+document.getElementById("btnExport").addEventListener("click", ()=>{
+    if(!currentCircle) return alert("Desenhe um raio primeiro!");
+    const center = currentCircle.getLatLng();
+    const radius = currentCircle.getRadius();
+    const selecionados = markers.filter(m => center.distanceTo(m.getLatLng()) <= radius);
+    downloadCSV(selecionados);
+});
+
+// Controle de desenho
+const drawControl = new L.Control.Draw({
+    draw: {
+        marker:false, polygon:false, polyline:false, rectangle:false, circle:true, circlemarker:false
+    },
+    edit: { featureGroup: new L.FeatureGroup().addTo(map) }
+});
+map.addControl(drawControl);
+
+// Evento ao criar círculo
+map.on(L.Draw.Event.CREATED, function(e) {
+    if(currentCircle) map.removeLayer(currentCircle);
+    currentCircle = e.layer;
+    currentCircle.addTo(map);
+    currentCircle.on('edit', updateCircleSelection);
+    updateCircleSelection();
+});
+
+// Evento de filtro
+document.getElementById("filter").addEventListener("change", function() {
+    loadData(this.value);
+});
+
+// Carrega dados inicialmente
+loadData();
+
+// Medição de distância entre pontos clicados
+map.on('click', function(e){
+    measurementPoints.push(e.latlng);
+    if(measurementPoints.length > 1){
+        const last = measurementPoints[measurementPoints.length-1];
+        const prev = measurementPoints[measurementPoints.length-2];
+        const line = L.polyline([prev,last], {color:'blue'}).addTo(measurementLayer);
+        const dist = prev.distanceTo(last)/1000; // km
+        distances.push(dist.toFixed(2));
+        document.getElementById("distances").innerText = ` | Distâncias (km): ${distances.join(", ")}`;
+    }
+});
+</script>
+
+</body>
+</html>
