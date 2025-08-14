@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<title>Mapa Interativo Avançado - Leaflet</title>
+<title>Mapa Interativo Avançado</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css"/>
 <style>
@@ -18,12 +18,12 @@
     font-family: Arial, sans-serif;
     box-shadow: 0px 2px 6px rgba(0,0,0,0.3);
   }
-  .leaflet-tooltip.outside {
+  .leaflet-tooltip.my-tooltip {
     background: white;
-    border: 1px solid #666;
-    padding: 2px 6px;
+    color: black;
+    border: 1px solid #333;
     font-size: 12px;
-    border-radius: 4px;
+    padding: 4px;
   }
 </style>
 </head>
@@ -36,6 +36,10 @@
     <option value="Cliente VIP">Cliente VIP</option>
     <option value="Cliente Regular">Cliente Regular</option>
   </select>
+  <button id="drawCircle">Desenhar Círculo</button>
+  <button id="measureLine">Medir Distância</button>
+  <button id="clearAll">Limpar Tudo</button>
+  <button id="exportCSV">Exportar CSV</button>
   <span id="count"></span>
 </div>
 
@@ -46,8 +50,7 @@
 <script src="https://unpkg.com/papaparse@5.3.0/papaparse.min.js"></script>
 
 <script>
-const SHEET_ID = "1_fuH8vWVLWqYb3H3PD6OB7iNuq_gT_s5wOEb01POuaw";
-const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv`;
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/1_fuH8vWVLWqYb3H3PD6OB7iNuq_gT_s5wOEb01POuaw/export?format=csv";
 
 const map = L.map('map').setView([-23.55052, -46.633308], 5);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -57,15 +60,16 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 let markers = [];
 let markerGroup = L.featureGroup().addTo(map);
 let currentCircle = null;
-let currentPolyline = null;
-let tempPoints = [];
-let distanceMarkers = [];
+let drawnItems = new L.FeatureGroup().addTo(map);
+let measureMode = false;
+let tempLine = null;
+let measurePoints = [];
+let totalDistance = 0;
 
 // Carregar dados da planilha
 function loadData(filter = "Todos") {
     markerGroup.clearLayers();
     markers = [];
-
     Papa.parse(SHEET_URL, {
         download: true,
         header: true,
@@ -74,21 +78,13 @@ function loadData(filter = "Todos") {
                 if (row.Latitude && row.Longitude) {
                     if (filter !== "Todos" && row.InfoExtra !== filter) return;
 
-                    const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)])
-                        .bindPopup(`<b>${row.Nome}</b><br>${row.InfoExtra}`)
-                        .bindTooltip(row.Nome, {permanent: false, direction: "top"});
-
-                    marker.on("click", () => {
-                        if (measuring) {
-                            tempPoints.push(marker.getLatLng());
-                            if (tempPoints.length >= 2) {
-                                drawPolyline();
-                            }
-                        }
+                    const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)]);
+                    marker.on('click', () => {
+                        marker.bindPopup(`<b>${row.Nome}</b><br>${row.InfoExtra}`).openPopup();
+                        if (measureMode) addMeasurePoint(marker.getLatLng());
                     });
-
                     markerGroup.addLayer(marker);
-                    markers.push(marker);
+                    markers.push({ marker, data: row });
                 }
             });
             updateCount();
@@ -104,98 +100,87 @@ function updateCount() {
     }
     const center = currentCircle.getLatLng();
     const radius = currentCircle.getRadius();
-    const selecionados = markers.filter(m => center.distanceTo(m.getLatLng()) <= radius);
+    const selecionados = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius);
     document.getElementById("count").innerText = ` | Pontos no raio: ${selecionados.length}`;
 
-    // Tooltip fora do círculo
-    const tooltipLatLng = L.latLng(center.lat + (radius / 111320), center.lng); // desloca latitude para cima
-    if (currentCircle.tooltip) {
-        map.removeLayer(currentCircle.tooltip);
-    }
-    currentCircle.tooltip = L.tooltip({
-        permanent: true,
-        direction: "top",
-        className: "outside"
-    })
-    .setLatLng(tooltipLatLng)
-    .setContent(`Pontos no raio: ${selecionados.length}`)
-    .addTo(map);
+    // Tooltip externo
+    const raioTexto = radius >= 1000 ? (radius/1000).toFixed(2) + " km" : radius.toFixed(0) + " m";
+    currentCircle.bindTooltip(
+        `Raio: ${raioTexto}<br>Pontos: ${selecionados.length}`,
+        { permanent: true, direction: "top", className: "my-tooltip" }
+    ).openTooltip();
 }
 
-// Controle de desenho do círculo
-const drawControl = new L.Control.Draw({
-    draw: {
-        marker: false,
-        polygon: false,
-        polyline: false,
-        rectangle: false,
-        circle: true,
-        circlemarker: false
-    },
-    edit: {
-        featureGroup: new L.FeatureGroup().addTo(map)
+// Adicionar ponto de medição
+function addMeasurePoint(latlng) {
+    measurePoints.push(latlng);
+    if (measurePoints.length > 1) {
+        const lastPoint = measurePoints[measurePoints.length - 2];
+        const dist = lastPoint.distanceTo(latlng);
+        totalDistance += dist;
+        if (tempLine) map.removeLayer(tempLine);
+        tempLine = L.polyline(measurePoints, { color: 'red' }).addTo(map);
+        const midIndex = Math.floor(measurePoints.length / 2);
+        const midLatLng = measurePoints[midIndex];
+        tempLine.bindTooltip(`Distância total: ${(totalDistance/1000).toFixed(2)} km`, 
+            {permanent: true, direction: 'center', className: "my-tooltip"}).openTooltip();
     }
-});
-map.addControl(drawControl);
+}
 
+// Botão para desenhar círculo
+document.getElementById("drawCircle").addEventListener("click", () => {
+    new L.Draw.Circle(map, { shapeOptions: { color: 'blue' } }).enable();
+});
+
+// Evento ao criar círculo
 map.on(L.Draw.Event.CREATED, function(e) {
-    if (currentCircle) map.removeLayer(currentCircle);
-    currentCircle = e.layer;
-    currentCircle.addTo(map);
-    currentCircle.on('edit', updateCount);
-    updateCount();
+    if (e.layerType === 'circle') {
+        if (currentCircle) map.removeLayer(currentCircle);
+        currentCircle = e.layer;
+        map.addLayer(currentCircle);
+        updateCount();
+    }
 });
 
-// --- Função de medição com botão ---
-let measuring = false;
+// Botão medir distância
+document.getElementById("measureLine").addEventListener("click", () => {
+    measureMode = !measureMode;
+    measurePoints = [];
+    totalDistance = 0;
+    if (tempLine) { map.removeLayer(tempLine); tempLine = null; }
+    alert(measureMode ? "Modo de medição ativado. Clique nos marcadores." : "Modo de medição desativado.");
+});
 
-const measureBtn = L.control({position: 'topleft'});
-measureBtn.onAdd = function() {
-    const btn = L.DomUtil.create('button', '');
-    btn.innerHTML = '📏 Medir';
-    btn.style.background = 'white';
-    btn.style.padding = '5px';
-    btn.style.cursor = 'pointer';
-    btn.onclick = () => {
-        measuring = !measuring;
-        tempPoints = [];
-        clearPolyline();
-        btn.style.background = measuring ? '#ccc' : 'white';
-    };
-    return btn;
-};
-measureBtn.addTo(map);
+// Botão limpar tudo
+document.getElementById("clearAll").addEventListener("click", () => {
+    markerGroup.clearLayers();
+    if (currentCircle) { map.removeLayer(currentCircle); currentCircle = null; }
+    if (tempLine) { map.removeLayer(tempLine); tempLine = null; }
+    totalDistance = 0;
+    measurePoints = [];
+    loadData(document.getElementById("filter").value);
+});
 
-function drawPolyline() {
-    clearPolyline();
-    currentPolyline = L.polyline(tempPoints, {color: 'blue'}).addTo(map);
+// Exportar CSV dos pontos dentro do raio
+document.getElementById("exportCSV").addEventListener("click", () => {
+    if (!currentCircle) return alert("Desenhe um círculo primeiro!");
+    const center = currentCircle.getLatLng();
+    const radius = currentCircle.getRadius();
+    const selecionados = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius)
+                                .map(m => m.data);
+    if (selecionados.length === 0) return alert("Nenhum ponto no raio.");
+    const csv = Papa.unparse(selecionados);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "pontos_raio.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+});
 
-    for (let i = 1; i < tempPoints.length; i++) {
-        const dist = tempPoints[i-1].distanceTo(tempPoints[i]);
-        const distText = dist >= 1000 ? (dist/1000).toFixed(2) + " km" : dist.toFixed(0) + " m";
-        const midPoint = L.latLng(
-            (tempPoints[i-1].lat + tempPoints[i].lat) / 2,
-            (tempPoints[i-1].lng + tempPoints[i].lng) / 2
-        );
-        const label = L.tooltip({
-            permanent: true,
-            direction: "center",
-            className: "outside"
-        })
-        .setLatLng(midPoint)
-        .setContent(distText)
-        .addTo(map);
-        distanceMarkers.push(label);
-    }
-}
-
-function clearPolyline() {
-    if (currentPolyline) map.removeLayer(currentPolyline);
-    distanceMarkers.forEach(l => map.removeLayer(l));
-    distanceMarkers = [];
-}
-
-// Evento para mudar filtro
+// Evento filtro
 document.getElementById("filter").addEventListener("change", function() {
     loadData(this.value);
 });
