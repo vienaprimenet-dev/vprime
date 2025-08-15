@@ -141,7 +141,7 @@ function updateCount() {
     } else {
         currentCircle.bindTooltip(
             `Raio: ${raioTexto}<br>Pontos: ${selecionados.length}`,
-            { permanent: false, direction: "top", className: "my-tooltip", offset: [0, -(radius/1000 + 20)] } // Ajuste para posicionar fora do círculo
+            { permanent: false, direction: "top", className: "my-tooltip", offset: [0, -50] } // Ajuste para -50 pixels fixos
         ).openTooltip(edgePoint);
     }
 }
