@@ -1,2 +1,21 @@
 body { margin: 0; padding: 0; }
 #map { width: 100%; height: 100%; }
+.my-tooltip {
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    pointer-events: none;
+}
+
+.custom-circle {
+    stroke: #3388ff;
+    stroke-width: 2;
+    fill: #3388ff;
+    fill-opacity: 0.2;
+}
+
+.selected-marker {
+    filter: hue-rotate(120deg) brightness(1.2);
+}
