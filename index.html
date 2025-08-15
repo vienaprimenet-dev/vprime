@@ -133,6 +133,9 @@ function updateCount() {
         center.lng + (radius / (111320 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(0)
     );
 
+    // Calcular offset baseado no raio (ajuste conforme necessário)
+    const tooltipOffset = [0, -radius/2 - 30]; // 30 pixels adicionais para garantir que fique fora
+
     if (currentCircle.getTooltip()) {
         currentCircle.setTooltipContent(
             `Raio: ${raioTexto}<br>Pontos: ${selecionados.length}`
@@ -141,7 +144,12 @@ function updateCount() {
     } else {
         currentCircle.bindTooltip(
             `Raio: ${raioTexto}<br>Pontos: ${selecionados.length}`,
-            { permanent: false, direction: "top", className: "my-tooltip", offset: [0, -50] } // Ajuste para -50 pixels fixos
+            { 
+                permanent: false, 
+                direction: "top", 
+                className: "my-tooltip", 
+                offset: tooltipOffset // Usando o offset calculado
+            }
         ).openTooltip(edgePoint);
     }
 }
