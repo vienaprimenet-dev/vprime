@@ -409,7 +409,7 @@ document.getElementById("measureLine").addEventListener("click", () => {
 document.getElementById("clearAll").addEventListener("click", () => {
     markerGroup.clearLayers();
     circles.forEach(circle => map.removeLayer(circle));
-    circles = [];
+    circles = []; // Limpa o array de círculos
     if (tempLine) { map.removeLayer(tempLine); tempLine = null; }
     totalDistance = 0;
     measurePoints = [];
@@ -420,6 +420,7 @@ document.getElementById("clearAll").addEventListener("click", () => {
         }
     });
     document.getElementById("circleControls").style.display = "none";
+    document.getElementById("circlesList").innerHTML = ""; // Limpa a lista visual
     loadData(document.getElementById("filter").value);
 });
 
