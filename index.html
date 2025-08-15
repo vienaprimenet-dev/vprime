@@ -141,11 +141,11 @@ function updateCount() {
     } else {
         currentCircle.bindTooltip(
             `Raio: ${raioTexto}<br>Pontos: ${selecionados.length}`,
-            { permanent: false, direction: "top", className: "my-tooltip", offset: [0, -radius/1000] }
+            { permanent: false, direction: "top", className: "my-tooltip", offset: [0, -(radius/1000 + 20)] } // Ajuste para posicionar fora do círculo
         ).openTooltip(edgePoint);
     }
 }
-
+  
 // Adicionar ponto de medição
 function addMeasurePoint(latlng) {
     if (measurePoints.length > 0) {
