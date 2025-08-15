@@ -19,3 +19,22 @@ body { margin: 0; padding: 0; }
 .selected-marker {
     filter: hue-rotate(120deg) brightness(1.2);
 }
+/* Diminuir o tamanho dos marcadores */
+.leaflet-marker-icon {
+    width: 20px !important;
+    height: 32px !important;
+    margin-left: -10px !important;
+    margin-top: -32px !important;
+}
+
+/* Diminuir a fonte dos tooltips de medição */
+.leaflet-tooltip.my-tooltip {
+    font-size: 10px !important;
+    padding: 2px 4px !important;
+}
+
+/* Ajustar o ícone do marcador padrão do Leaflet */
+.leaflet-default-icon-path {
+    background-image: url(https://unpkg.com/leaflet/dist/images/marker-icon.png);
+    background-size: 20px 32px;
+}
