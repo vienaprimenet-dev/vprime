@@ -200,7 +200,7 @@ function addCircle(latlng, radius) {
         className: 'custom-circle'
     }).addTo(map);
     
-    // Adiciona controle para este círculo
+    // Adiciona controle para este círculo ANTES de adicionar ao array
     addCircleControl(circle);
     
     circles.push(circle);
@@ -222,10 +222,13 @@ function addCircleControl(circle) {
     const radius = circle.getRadius();
     const selecionados = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius);
     
+    // Usar o índice atual do círculo no array (antes de push)
+    const circleIndex = circles.length;
+    
     circleDiv.innerHTML = `
-        <span>Círculo com ${selecionados.length} pontos</span>
-        <button class="export-circle" data-id="${circles.length - 1}">Exportar</button>
-        <button class="remove-circle" data-id="${circles.length - 1}">Remover</button>
+        <span>Círculo ${circleIndex + 1} com ${selecionados.length} pontos</span>
+        <button class="export-circle" data-id="${circleIndex}">Exportar</button>
+        <button class="remove-circle" data-id="${circleIndex}">Remover</button>
     `;
     
     document.getElementById("circlesList").appendChild(circleDiv);
