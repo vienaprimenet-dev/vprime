@@ -1,12 +1,20 @@
 body { margin: 0; padding: 0; }
 #map { width: 100%; height: 100%; }
+
+/* Tooltip padrão - reduzindo a fonte e padding */
 .my-tooltip {
     background: white;
     border: 1px solid #ccc;
     border-radius: 4px;
-    padding: 5px 10px;
-    font-size: 12px;
+    padding: 3px 6px; /* Reduzido de 5px 10px */
+    font-size: 10px;  /* Reduzido de 12px */
     pointer-events: none;
+}
+
+/* Tooltip específico para medição de distância */
+.leaflet-tooltip.my-tooltip.leaflet-interactive {
+    font-size: 9px;   /* Um pouco menor que o tooltip padrão */
+    padding: 2px 4px; /* Mais compacto */
 }
 
 .custom-circle {
@@ -19,7 +27,8 @@ body { margin: 0; padding: 0; }
 .selected-marker {
     filter: hue-rotate(120deg) brightness(1.2);
 }
-/* Diminuir o tamanho dos marcadores */
+
+/* Redução do tamanho dos marcadores */
 .leaflet-marker-icon {
     width: 20px !important;
     height: 32px !important;
@@ -27,12 +36,11 @@ body { margin: 0; padding: 0; }
     margin-top: -32px !important;
 }
 
-/* Diminuir a fonte dos tooltips de medição */
-.leaflet-tooltip.my-tooltip {
-    font-size: 10px !important;
-    padding: 2px 4px !important;
+/* Ajuste para o ícone padrão do Leaflet */
+.leaflet-default-icon-path {
+    background-image: url(https://unpkg.com/leaflet/dist/images/marker-icon.png);
+    background-size: 20px 32px; /* Reduzido do tamanho padrão */
 }
-
 /* Ajustar o ícone do marcador padrão do Leaflet */
 .leaflet-default-icon-path {
     background-image: url(https://unpkg.com/leaflet/dist/images/marker-icon.png);
