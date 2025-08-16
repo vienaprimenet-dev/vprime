@@ -134,7 +134,8 @@ function updateCount() {
     }
 
     let totalSelecionados = new Set();
-    
+
+    // Acumular todos os pontos selecionados de todos os círculos
     circles.forEach(circle => {
         const center = circle.getLatLng();
         const radius = circle.getRadius();
@@ -143,14 +144,13 @@ function updateCount() {
         selecionados.forEach(m => {
             m.marker.options.isSelected = true;
             m.marker.setIcon(createDotIcon(map.getZoom(), true));
-            totalSelecionados.add(m.data.Nome); // Adiciona cada ponto único ao Set
+            totalSelecionados.add(m.data.Nome); // Adiciona cada nome único ao Set
         });
-
-        updateCircleTooltip(circle);
     });
 
     const totalSelecionadosCount = totalSelecionados.size;
     document.getElementById("count").innerText = `Pontos selecionados: ${totalSelecionadosCount} | Total: ${markers.length}${measureMode ? ` | Distância Total: ${(totalDistance/1000).toFixed(2)} km` : ''}`;
+    console.log(`Pontos selecionados contados: ${totalSelecionadosCount}`); // Para depuração
 }
 
 // Atualizar tooltip do círculo
