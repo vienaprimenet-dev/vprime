@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <title>Mapa Interativo Avançado</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
 <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
@@ -29,8 +29,8 @@
 
 <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <script src="https://unpkg.com/papaparse@5.3.0/papaparse.min.js"></script>
 
 <script>
@@ -50,11 +50,27 @@ let tempLine = null;
 let measurePoints = [];
 let totalDistance = 0;
 
+// Inicializar controle de desenho
+const drawControl = new L.Control.Draw({
+    draw: {
+        polyline: false,
+        polygon: false,
+        rectangle: false,
+        circle: true,
+        marker: false,
+        circlemarker: false
+    },
+    edit: {
+        featureGroup: drawnItems,
+        remove: false
+    }
+}).addTo(map);
+
 // Função para criar ícone de marcador dinâmico baseado no zoom
-function createDotIcon(zoom) {
-    const size = zoom > 10 ? 8 : zoom > 7 ? 6 : 4; // Tamanho varia com o zoom
+function createDotIcon(zoom, isSelected = false) {
+    const size = zoom > 10 ? 8 : zoom > 7 ? 6 : 4;
     return L.divIcon({
-        className: 'dot-marker',
+        className: `dot-marker ${isSelected ? 'selected-marker' : ''}`,
         html: `<div style="width: ${size}px; height: ${size}px;"></div>`,
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2]
@@ -126,7 +142,7 @@ function updateCount() {
         
         selecionados.forEach(m => {
             m.marker.options.isSelected = true;
-            m.marker.setIcon(createDotIcon(map.getZoom()));
+            m.marker.setIcon(createDotIcon(map.getZoom(), true));
             totalSelecionados.add(m.data.Nome);
         });
 
@@ -148,12 +164,11 @@ function updateCircleTooltip(circle) {
         center.lng + (radius / (111320 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(0)
     );
 
-    const tooltipOffset = [0, -20];
     const tooltipOptions = {
         permanent: false,
         direction: "top",
         className: "my-tooltip",
-        offset: tooltipOffset,
+        offset: [0, -20],
         sticky: true,
         interactive: false
     };
@@ -177,7 +192,7 @@ function addCircle(latlng, radius) {
         radius: radius,
         interactive: false,
         className: 'custom-circle'
-    }).addTo(map);
+    }).addTo(drawnItems);
     
     addCircleControl(circle);
     circles.push(circle);
@@ -221,7 +236,7 @@ function addCircleControl(circle) {
 // Remover círculo
 function removeCircle(id) {
     if (id >= 0 && id < circles.length) {
-        map.removeLayer(circles[id]);
+        drawnItems.removeLayer(circles[id]);
         circles.splice(id, 1);
         updateCircleControls();
         updateCount();
@@ -353,14 +368,26 @@ map.on('zoomend', updateMarkerIcons);
 
 // Botão para desenhar círculo
 document.getElementById("drawCircle").addEventListener("click", () => {
-    new L.Draw.Circle(map, { shapeOptions: { color: 'blue' } }).enable();
+    try {
+        new L.Draw.Circle(map, {
+            shapeOptions: {
+                color: 'blue',
+                weight: 2,
+                opacity: 0.8,
+                fillOpacity: 0.2
+            }
+        }).enable();
+    } catch (e) {
+        console.error("Erro ao iniciar L.Draw.Circle:", e);
+        alert("Erro ao ativar o modo de desenho de círculos. Verifique o console para detalhes.");
+    }
 });
 
-// Evento ao criar círculo
-map.on(L.Draw.Event.CREATED, function(e) {
+// Evento ao criar forma
+map.on('draw:created', function(e) {
     if (e.layerType === 'circle') {
         const circle = addCircle(e.layer.getLatLng(), e.layer.getRadius());
-        map.removeLayer(e.layer);
+        drawnItems.addLayer(circle);
     }
 });
 
@@ -384,7 +411,7 @@ document.getElementById("measureLine").addEventListener("click", () => {
 // Botão limpar tudo
 document.getElementById("clearAll").addEventListener("click", () => {
     markerGroup.clearLayers();
-    circles.forEach(circle => map.removeLayer(circle));
+    circles.forEach(circle => drawnItems.removeLayer(circle));
     circles = [];
     if (tempLine) { map.removeLayer(tempLine); tempLine = null; }
     totalDistance = 0;
