@@ -5,43 +5,9 @@
 <title>Mapa Interativo Avançado</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css"/>
-<style>
-  #map { height: 100vh; }
-  .filter-box {
-    position: absolute;
-    top: 10px;
-    left: 50px;
-    z-index: 1000;
-    background: white;
-    padding: 8px;
-    border-radius: 5px;
-    font-family: Arial, sans-serif;
-    box-shadow: 0px 2px 6px rgba(0,0,0,0.3);
-  }
-  .leaflet-tooltip.my-tooltip {
-    background: white;
-    color: black;
-    border: 1px solid #333;
-    font-size: 12px;
-    padding: 4px;
-  }
-  .circle-controls {
-    position: absolute;
-    top: 120px;
-    left: 50px;
-    z-index: 1000;
-    background: white;
-    padding: 8px;
-    border-radius: 5px;
-    font-family: Arial, sans-serif;
-    box-shadow: 0px 2px 6px rgba(0,0,0,0.3);
-    max-height: 300px;
-    overflow-y: auto;
-  }
-</style>
+<link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-
 <div class="filter-box">
   <label>Filtrar por tipo:</label>
   <select id="filter">
@@ -84,6 +50,26 @@ let tempLine = null;
 let measurePoints = [];
 let totalDistance = 0;
 
+// Função para criar ícone de marcador dinâmico baseado no zoom
+function createDotIcon(zoom) {
+    const size = zoom > 10 ? 8 : zoom > 7 ? 6 : 4; // Tamanho varia com o zoom
+    return L.divIcon({
+        className: 'dot-marker',
+        html: `<div style="width: ${size}px; height: ${size}px;"></div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
+    });
+}
+
+// Função para atualizar ícones dos marcadores com base no zoom
+function updateMarkerIcons() {
+    const zoom = map.getZoom();
+    markers.forEach(m => {
+        const isSelected = m.marker.options.isSelected || false;
+        m.marker.setIcon(createDotIcon(zoom, isSelected));
+    });
+}
+
 // Carregar dados da planilha
 function loadData(filter = "Todos") {
     markerGroup.clearLayers();
@@ -96,15 +82,9 @@ function loadData(filter = "Todos") {
                 if (row.Latitude && row.Longitude) {
                     if (filter !== "Todos" && row.Regional !== filter) return;
 
-                    // marcador como ponto
                     const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)], {
                         customId: row.Nome,
-                        icon: L.divIcon({
-                            className: "",
-                            html: '<div class="dot-marker"></div>',
-                            iconSize: [8, 8],
-                            iconAnchor: [7, 7]
-                        })
+                        icon: createDotIcon(map.getZoom())
                     });
                     
                     const popupContent = `<b>${row.Nome}</b><br>${row.Regional}`;
@@ -125,12 +105,11 @@ function loadData(filter = "Todos") {
     });
 }
 
-// Atualizar contagem
+// Atualizar contagem de pontos
 function updateCount() {
-    // reset ícones
     markers.forEach(m => {
-        const el = m.marker.getElement()?.querySelector(".dot-marker");
-        if (el) el.classList.remove("selected");
+        m.marker.options.isSelected = false;
+        m.marker.setIcon(createDotIcon(map.getZoom()));
     });
 
     if (circles.length === 0) {
@@ -145,10 +124,9 @@ function updateCount() {
         const radius = circle.getRadius();
         const selecionados = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius);
         
-        // destacar
         selecionados.forEach(m => {
-            const el = m.marker.getElement()?.querySelector(".dot-marker");
-            if (el) el.classList.add("selected");
+            m.marker.options.isSelected = true;
+            m.marker.setIcon(createDotIcon(map.getZoom()));
             totalSelecionados.add(m.data.Nome);
         });
 
@@ -158,7 +136,7 @@ function updateCount() {
     document.getElementById("count").innerText = `Pontos selecionados: ${totalSelecionados.size} | Total: ${markers.length}${measureMode ? ` | Distância Total: ${(totalDistance/1000).toFixed(2)} km` : ''}`;
 }
 
-// Atualizar tooltip de círculo
+// Atualizar tooltip do círculo
 function updateCircleTooltip(circle) {
     const center = circle.getLatLng();
     const radius = circle.getRadius();
@@ -170,17 +148,20 @@ function updateCircleTooltip(circle) {
         center.lng + (radius / (111320 * Math.cos(center.lat * Math.PI / 180))) * Math.sin(0)
     );
 
+    const tooltipOffset = [0, -20];
     const tooltipOptions = {
         permanent: false,
         direction: "top",
         className: "my-tooltip",
-        offset: [0, -20],
+        offset: tooltipOffset,
         sticky: true,
         interactive: false
     };
 
     if (circle.getTooltip()) {
-        circle.setTooltipContent(`Raio: ${raioTexto}<br>Pontos: ${selecionados.length}`);
+        circle.setTooltipContent(
+            `Raio: ${raioTexto}<br>Pontos: ${selecionados.length}`
+        );
         circle.openTooltip(edgePoint);
     } else {
         circle.bindTooltip(
@@ -204,7 +185,7 @@ function addCircle(latlng, radius) {
     return circle;
 }
 
-// Adicionar controle para um círculo
+// Adicionar controle para círculo
 function addCircleControl(circle) {
     document.getElementById("circleControls").style.display = "block";
     
@@ -231,6 +212,7 @@ function addCircleControl(circle) {
     circleDiv.querySelector(".export-circle").addEventListener("click", function() {
         exportCircleCSV(this.getAttribute("data-id"));
     });
+    
     circleDiv.querySelector(".remove-circle").addEventListener("click", function() {
         removeCircle(parseInt(this.getAttribute("data-id")));
     });
@@ -278,13 +260,14 @@ function updateCircleControls() {
         circleDiv.querySelector(".export-circle").addEventListener("click", function() {
             exportCircleCSV(this.getAttribute("data-id"));
         });
+        
         circleDiv.querySelector(".remove-circle").addEventListener("click", function() {
             removeCircle(parseInt(this.getAttribute("data-id")));
         });
     });
 }
 
-// Exportar CSV de um círculo
+// Exportar CSV de círculo específico
 function exportCircleCSV(circleId) {
     circleId = parseInt(circleId);
     if (circleId < 0 || circleId >= circles.length) return;
@@ -292,7 +275,8 @@ function exportCircleCSV(circleId) {
     const circle = circles[circleId];
     const center = circle.getLatLng();
     const radius = circle.getRadius();
-    const selecionados = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius).map(m => m.data);
+    const selecionados = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius)
+                                .map(m => m.data);
     
     if (selecionados.length === 0) return alert("Nenhum ponto neste círculo.");
     
@@ -317,7 +301,8 @@ function exportAllCSV() {
     circles.forEach(circle => {
         const center = circle.getLatLng();
         const radius = circle.getRadius();
-        const selecionados = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius).map(m => m.data);
+        const selecionados = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius)
+                                    .map(m => m.data);
         
         selecionados.forEach(item => {
             const key = `${item.Latitude},${item.Longitude}`;
@@ -363,16 +348,23 @@ function addMeasurePoint(latlng) {
     updateCount();
 }
 
-// Botões
+// Evento de zoom para atualizar ícones
+map.on('zoomend', updateMarkerIcons);
+
+// Botão para desenhar círculo
 document.getElementById("drawCircle").addEventListener("click", () => {
     new L.Draw.Circle(map, { shapeOptions: { color: 'blue' } }).enable();
 });
+
+// Evento ao criar círculo
 map.on(L.Draw.Event.CREATED, function(e) {
     if (e.layerType === 'circle') {
         const circle = addCircle(e.layer.getLatLng(), e.layer.getRadius());
         map.removeLayer(e.layer);
     }
 });
+
+// Botão medir distância
 document.getElementById("measureLine").addEventListener("click", () => {
     measureMode = !measureMode;
     if (!measureMode) {
@@ -388,6 +380,8 @@ document.getElementById("measureLine").addEventListener("click", () => {
     alert(measureMode ? "Modo de medição ativado. Clique nos marcadores." : "Modo de medição desativado.");
     updateCount();
 });
+
+// Botão limpar tudo
 document.getElementById("clearAll").addEventListener("click", () => {
     markerGroup.clearLayers();
     circles.forEach(circle => map.removeLayer(circle));
@@ -405,13 +399,22 @@ document.getElementById("clearAll").addEventListener("click", () => {
     document.getElementById("circlesList").innerHTML = "";
     loadData(document.getElementById("filter").value);
 });
+
+// Botão exportar todos os círculos
 document.getElementById("exportAllCSV").addEventListener("click", exportAllCSV);
+
+// Evento filtro
 document.getElementById("filter").addEventListener("change", function() {
     loadData(this.value);
 });
-map.on('click', function() { map.closePopup(); });
+
+// Fechar popups ao clicar no mapa
+map.on('click', function() {
+    map.closePopup();
+});
+
+// Carrega dados inicialmente
 loadData();
 </script>
-
 </body>
 </html>
