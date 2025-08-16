@@ -41,6 +41,11 @@
     max-height: 300px;
     overflow-y: auto;
   }
+  .dot-marker {
+    background: none;
+    border: none;
+    box-shadow: none;
+  }
 </style>
 </head>
 <body>
@@ -80,14 +85,13 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let markers = [];
 let markerGroup = L.featureGroup().addTo(map);
-let circles = []; // Array para armazenar todos os círculos
+let circles = [];
 let drawnItems = new L.FeatureGroup().addTo(map);
 let measureMode = false;
 let tempLine = null;
 let measurePoints = [];
 let totalDistance = 0;
 
-// Carregar dados da planilha
 function loadData(filter = "Todos") {
     markerGroup.clearLayers();
     markers = [];
@@ -100,7 +104,16 @@ function loadData(filter = "Todos") {
                     if (filter !== "Todos" && row.Regional !== filter) return;
 
                     const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)], {
-                        customId: row.Nome
+                        customId: row.Nome,
+                        icon: L.divIcon({
+                            className: 'dot-marker',
+                            html: `<svg width="12" height="12" viewBox="0 0 12 12">
+                                     <circle cx="6" cy="6" r="4" fill="#3388ff" />
+                                   </svg>`,
+                            iconSize: [12, 12],
+                            iconAnchor: [6, 6],
+                            popupAnchor: [0, -6]
+                        })
                     });
                     
                     const popupContent = `<b>${row.Nome}</b><br>${row.Regional}`;
@@ -121,43 +134,50 @@ function loadData(filter = "Todos") {
     });
 }
 
-// Função para atualizar a contagem de pontos nos círculos
 function updateCount() {
-    // Resetar ícones dos marcadores
     markers.forEach(m => {
-        m.marker.setIcon(L.Icon.Default.prototype);
+        m.marker.setIcon(L.divIcon({
+            className: 'dot-marker',
+            html: `<svg width="12" height="12" viewBox="0 0 12 12">
+                     <circle cx="6" cy="6" r="4" fill="#3388ff" />
+                   </svg>`,
+            iconSize: [12, 12],
+            iconAnchor: [6, 6],
+            popupAnchor: [0, -6]
+        }));
     });
 
-    // Se não houver círculos, mostrar contagem total
     if (circles.length === 0) {
         document.getElementById("count").innerText = `Pontos: ${markers.length}${measureMode ? ` | Distância Total: ${(totalDistance/1000).toFixed(2)} km` : ''}`;
         return;
     }
 
-    let totalSelecionados = new Set(); // Usamos Set para evitar duplicatas
+    let totalSelecionados = new Set();
     
     circles.forEach(circle => {
         const center = circle.getLatLng();
         const radius = circle.getRadius();
         const selecionados = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius);
         
-        // Destacar marcadores selecionados
         selecionados.forEach(m => {
-            m.marker.setIcon(new L.Icon.Default({
-                className: 'selected-marker'
+            m.marker.setIcon(L.divIcon({
+                className: 'dot-marker selected-marker',
+                html: `<svg width="12" height="12" viewBox="0 0 12 12">
+                         <circle cx="6" cy="6" r="4" fill="#3388ff" />
+                       </svg>`,
+                iconSize: [12, 12],
+                iconAnchor: [6, 6],
+                popupAnchor: [0, -6]
             }));
-            totalSelecionados.add(m.data.Nome); // Adiciona ao conjunto de selecionados
+            totalSelecionados.add(m.data.Nome);
         });
 
-        // Atualizar tooltip do círculo
         updateCircleTooltip(circle);
     });
 
-    // Atualizar contagem na interface
     document.getElementById("count").innerText = `Pontos selecionados: ${totalSelecionados.size} | Total: ${markers.length}${measureMode ? ` | Distância Total: ${(totalDistance/1000).toFixed(2)} km` : ''}`;
 }
 
-// Atualizar tooltip de um círculo específico
 function updateCircleTooltip(circle) {
     const center = circle.getLatLng();
     const radius = circle.getRadius();
@@ -192,7 +212,6 @@ function updateCircleTooltip(circle) {
     }
 }
 
-// Adicionar novo círculo ao mapa
 function addCircle(latlng, radius) {
     const circle = L.circle(latlng, {
         radius: radius,
@@ -200,7 +219,6 @@ function addCircle(latlng, radius) {
         className: 'custom-circle'
     }).addTo(map);
     
-    // Adiciona controle para este círculo ANTES de adicionar ao array
     addCircleControl(circle);
     
     circles.push(circle);
@@ -208,7 +226,6 @@ function addCircle(latlng, radius) {
     return circle;
 }
 
-// Adicionar controle para um círculo
 function addCircleControl(circle) {
     document.getElementById("circleControls").style.display = "block";
     
@@ -222,7 +239,6 @@ function addCircleControl(circle) {
     const radius = circle.getRadius();
     const selecionados = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius);
     
-    // Usar o índice atual do círculo no array (antes de push)
     const circleIndex = circles.length;
     
     circleDiv.innerHTML = `
@@ -233,7 +249,6 @@ function addCircleControl(circle) {
     
     document.getElementById("circlesList").appendChild(circleDiv);
     
-    // Adiciona eventos aos botões
     circleDiv.querySelector(".export-circle").addEventListener("click", function() {
         exportCircleCSV(this.getAttribute("data-id"));
     });
@@ -244,7 +259,6 @@ function addCircleControl(circle) {
     });
 }
 
-// Remover círculo do mapa
 function removeCircle(id) {
     if (id >= 0 && id < circles.length) {
         map.removeLayer(circles[id]);
@@ -254,7 +268,6 @@ function removeCircle(id) {
     }
 }
 
-// Atualizar controles dos círculos
 function updateCircleControls() {
     const circlesList = document.getElementById("circlesList");
     circlesList.innerHTML = "";
@@ -283,7 +296,6 @@ function updateCircleControls() {
         
         circlesList.appendChild(circleDiv);
         
-        // Adiciona eventos aos botões
         circleDiv.querySelector(".export-circle").addEventListener("click", function() {
             exportCircleCSV(this.getAttribute("data-id"));
         });
@@ -294,7 +306,6 @@ function updateCircleControls() {
     });
 }
 
-// Exportar CSV de um círculo específico
 function exportCircleCSV(circleId) {
     circleId = parseInt(circleId);
     if (circleId < 0 || circleId >= circles.length) return;
@@ -318,12 +329,11 @@ function exportCircleCSV(circleId) {
     document.body.removeChild(a);
 }
 
-// Exportar CSV de todos os círculos combinados
 function exportAllCSV() {
     if (circles.length === 0) return alert("Desenhe pelo menos um círculo primeiro!");
     
     let allSelecionados = [];
-    let uniqueSelecionados = new Set(); // Para evitar duplicatas
+    let uniqueSelecionados = new Set();
     
     circles.forEach(circle => {
         const center = circle.getLatLng();
@@ -353,7 +363,6 @@ function exportAllCSV() {
     document.body.removeChild(a);
 }
 
-// Adicionar ponto de medição
 function addMeasurePoint(latlng) {
     if (measurePoints.length > 0) {
         const lastPoint = measurePoints[measurePoints.length - 1];
@@ -375,20 +384,17 @@ function addMeasurePoint(latlng) {
     updateCount();
 }
 
-// Botão para desenhar círculo
 document.getElementById("drawCircle").addEventListener("click", () => {
     new L.Draw.Circle(map, { shapeOptions: { color: 'blue' } }).enable();
 });
 
-// Evento ao criar círculo
 map.on(L.Draw.Event.CREATED, function(e) {
     if (e.layerType === 'circle') {
         const circle = addCircle(e.layer.getLatLng(), e.layer.getRadius());
-        map.removeLayer(e.layer); // Remove o círculo criado pelo Leaflet.draw
+        map.removeLayer(e.layer);
     }
 });
 
-// Botão medir distância
 document.getElementById("measureLine").addEventListener("click", () => {
     measureMode = !measureMode;
     if (!measureMode) {
@@ -405,11 +411,10 @@ document.getElementById("measureLine").addEventListener("click", () => {
     updateCount();
 });
 
-// Botão limpar tudo
 document.getElementById("clearAll").addEventListener("click", () => {
     markerGroup.clearLayers();
     circles.forEach(circle => map.removeLayer(circle));
-    circles = []; // Limpa o array de círculos
+    circles = [];
     if (tempLine) { map.removeLayer(tempLine); tempLine = null; }
     totalDistance = 0;
     measurePoints = [];
@@ -420,24 +425,20 @@ document.getElementById("clearAll").addEventListener("click", () => {
         }
     });
     document.getElementById("circleControls").style.display = "none";
-    document.getElementById("circlesList").innerHTML = ""; // Limpa a lista visual
+    document.getElementById("circlesList").innerHTML = "";
     loadData(document.getElementById("filter").value);
 });
 
-// Botão exportar todos os círculos
 document.getElementById("exportAllCSV").addEventListener("click", exportAllCSV);
 
-// Evento filtro
 document.getElementById("filter").addEventListener("change", function() {
     loadData(this.value);
 });
 
-// Fechar popups ao clicar no mapa
 map.on('click', function() {
     map.closePopup();
 });
 
-// Carrega dados inicialmente
 loadData();
 </script>
 
