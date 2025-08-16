@@ -143,13 +143,14 @@ function updateCount() {
         selecionados.forEach(m => {
             m.marker.options.isSelected = true;
             m.marker.setIcon(createDotIcon(map.getZoom(), true));
-            totalSelecionados.add(m.data.Nome);
+            totalSelecionados.add(m.data.Nome); // Adiciona cada ponto único ao Set
         });
 
         updateCircleTooltip(circle);
     });
 
-    document.getElementById("count").innerText = `Pontos selecionados: ${totalSelecionados.size} | Total: ${markers.length}${measureMode ? ` | Distância Total: ${(totalDistance/1000).toFixed(2)} km` : ''}`;
+    const totalSelecionadosCount = totalSelecionados.size;
+    document.getElementById("count").innerText = `Pontos selecionados: ${totalSelecionadosCount} | Total: ${markers.length}${measureMode ? ` | Distância Total: ${(totalDistance/1000).toFixed(2)} km` : ''}`;
 }
 
 // Atualizar tooltip do círculo
