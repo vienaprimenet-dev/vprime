@@ -1,20 +1,18 @@
 body { margin: 0; padding: 0; }
 #map { width: 100%; height: 100%; }
 
-/* Tooltip padrão - reduzindo a fonte e padding */
 .my-tooltip {
     background: white;
     border: 1px solid #ccc;
     border-radius: 4px;
-    padding: 3px 6px; /* Reduzido de 5px 10px */
-    font-size: 10px;  /* Reduzido de 12px */
+    padding: 3px 6px;
+    font-size: 10px;
     pointer-events: none;
 }
 
-/* Tooltip específico para medição de distância */
 .leaflet-tooltip.my-tooltip.leaflet-interactive {
-    font-size: 9px;   /* Um pouco menor que o tooltip padrão */
-    padding: 2px 4px; /* Mais compacto */
+    font-size: 9px;
+    padding: 2px 4px;
 }
 
 .custom-circle {
@@ -25,10 +23,11 @@ body { margin: 0; padding: 0; }
 }
 
 .dot-marker {
-  width: 8px;
-  height: 8px;
-  background-color: #3388ff; /* mesma cor do marcador padrão */
-  border-radius: 50%;
-  border: 2px solid white;   /* borda branca para dar destaque */
-  box-shadow: 0 0 2px rgba(0,0,0,0.5);
+    background: none;
+    border: none;
+    box-shadow: none;
+}
+
+.selected-marker {
+    filter: hue-rotate(90deg) brightness(1.2);
 }
