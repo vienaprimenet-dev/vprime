@@ -24,25 +24,11 @@ body { margin: 0; padding: 0; }
     fill-opacity: 0.2;
 }
 
-.selected-marker {
-    filter: hue-rotate(120deg) brightness(1.2);
-}
-
-/* Redução do tamanho dos marcadores */
-.leaflet-marker-icon {
-    width: 20px !important;
-    height: 32px !important;
-    margin-left: -10px !important;
-    margin-top: -32px !important;
-}
-
-/* Ajuste para o ícone padrão do Leaflet */
-.leaflet-default-icon-path {
-    background-image: url(https://unpkg.com/leaflet/dist/images/marker-icon.png);
-    background-size: 20px 32px; /* Reduzido do tamanho padrão */
-}
-/* Ajustar o ícone do marcador padrão do Leaflet */
-.leaflet-default-icon-path {
-    background-image: url(https://unpkg.com/leaflet/dist/images/marker-icon.png);
-    background-size: 20px 32px;
+.dot-marker {
+  width: 12px;
+  height: 12px;
+  background-color: #3388ff; /* mesma cor do marcador padrão */
+  border-radius: 50%;
+  border: 2px solid white;   /* borda branca para dar destaque */
+  box-shadow: 0 0 2px rgba(0,0,0,0.5);
 }
