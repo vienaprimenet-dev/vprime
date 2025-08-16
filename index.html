@@ -99,8 +99,15 @@ function loadData(filter = "Todos") {
                 if (row.Latitude && row.Longitude) {
                     if (filter !== "Todos" && row.Regional !== filter) return;
 
-                    const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)], {
-                        customId: row.Nome
+                    const marker = L.circleMarker([parseFloat(row.Latitude), parseFloat(row.Longitude)], {
+    radius: 5,  // Tamanho do ponto
+    fillColor: "#3388ff",  // Cor de preenchimento
+    color: "#000",  // Cor da borda
+    weight: 1,  // Espessura da borda
+    opacity: 1,
+    fillOpacity: 0.8,
+    customId: row.Nome
+});
                     });
                     
                     const popupContent = `<b>${row.Nome}</b><br>${row.Regional}`;
