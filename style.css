@@ -49,8 +49,7 @@ body {
 }
 
 .custom-circle {
-    stroke: #3388ff;
-    stroke-width: 2;
+    stroke: none;
     fill: #3388ff;
     fill-opacity: 0.2;
 }
@@ -63,5 +62,5 @@ body {
 }
 
 .dot-marker.selected-marker {
-    background-color: #33ff88;
+    background-color: #800080;
 }
