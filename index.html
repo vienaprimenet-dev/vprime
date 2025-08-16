@@ -98,9 +98,9 @@ function loadData(filter = "Todos") {
             results.data.forEach(row => {
                 if (row.Latitude && row.Longitude) {
                     if (filter !== "Todos" && row.Regional !== filter) return;
-const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)], {
-    customId: row.Nome
-});
+
+                    const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)], {
+                        customId: row.Nome
                     });
                     
                     const popupContent = `<b>${row.Nome}</b><br>${row.Regional}`;
