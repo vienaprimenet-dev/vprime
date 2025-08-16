@@ -116,7 +116,7 @@ function loadData(filter = "Todos") {
                         })
                     });
                     
-                    const popupContent = `<b>${row.Cliente}</b><b>${row.Instalação}</b><b>${row.Cidade}</b><br>${row.Regional}</b>`;
+                    const popupContent = `<b>${row.Cliente}</b><b>${row.Instalação}<b>${row.Cidade}<br>${row.Regional}`;
                     marker.bindPopup(popupContent);
                     
                     marker.on('click', function(e) {
