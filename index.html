@@ -100,8 +100,15 @@ function loadData(filter = "Todos") {
                     if (filter !== "Todos" && row.Regional !== filter) return;
 
                     const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)], {
-                        customId: row.Nome
-                    });
+    customId: row.Nome,
+    icon: L.divIcon({
+        className: "custom-marker",
+        html: '<div class="dot-marker"></div>',
+        iconSize: [12, 12], // tamanho do ponto
+        iconAnchor: [6, 6]  // centraliza o ponto
+    })
+});
+
                     
                     const popupContent = `<b>${row.Nome}</b><br>${row.Regional}`;
                     marker.bindPopup(popupContent);
