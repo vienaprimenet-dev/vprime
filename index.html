@@ -49,8 +49,8 @@
   <label>Filtrar por tipo:</label>
   <select id="filter">
     <option value="Todos">Todos</option>
-    <option value="Cliente VIP">Cliente VIP</option>
-    <option value="Cliente Regular">Cliente Regular</option>
+    <option value="Norte">Norte</option>
+    <option value="Oeste">Oeste</option>
   </select>
   <button id="drawCircle">Desenhar Círculo</button>
   <button id="measureLine">Medir Distância</button>
@@ -97,13 +97,13 @@ function loadData(filter = "Todos") {
         complete: function(results) {
             results.data.forEach(row => {
                 if (row.Latitude && row.Longitude) {
-                    if (filter !== "Todos" && row.InfoExtra !== filter) return;
+                    if (filter !== "Todos" && row.Regional !== filter) return;
 
                     const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)], {
                         customId: row.Nome
                     });
                     
-                    const popupContent = `<b>${row.Nome}</b><br>${row.InfoExtra}`;
+                    const popupContent = `<b>${row.Nome}</b><br>${row.Regional}`;
                     marker.bindPopup(popupContent);
                     
                     marker.on('click', function(e) {
