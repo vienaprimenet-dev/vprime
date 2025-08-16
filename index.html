@@ -19,7 +19,7 @@
   <button id="measureLine">Medir Distância</button>
   <button id="clearAll">Limpar Tudo</button>
   <button id="exportAllCSV">Exportar Todos</button>
-  <span id="count">Pontos: 0</span>
+  <span id="count"></span>
 </div>
 
 <div class="circle-controls" id="circleControls" style="display: none;">
@@ -129,26 +129,28 @@ function updateCount() {
     });
 
     if (circles.length === 0) {
-        document.getElementById("count").innerText = `Total: ${markers.length}${measureMode ? ` | Distância Total: ${(totalDistance/1000).toFixed(2)} km` : ''}`;
+        document.getElementById("count").innerText = `Pontos: ${markers.length}${measureMode ? ` | Distância Total: ${(totalDistance/1000).toFixed(2)} km` : ''}`;
         return;
     }
 
-    let selectedMarkers = new Set();
+    let totalSelecionados = new Set();
 
+    // Acumular todos os pontos selecionados de todos os círculos
     circles.forEach(circle => {
         const center = circle.getLatLng();
         const radius = circle.getRadius();
+        const selecionados = markers.filter(m => center.distanceTo(m.marker.getLatLng()) <= radius);
         
-        markers.forEach(m => {
-            if (center.distanceTo(m.marker.getLatLng()) <= radius) {
-                m.marker.options.isSelected = true;
-                m.marker.setIcon(createDotIcon(map.getZoom(), true));
-                selectedMarkers.add(m.marker._leaflet_id); // Usando ID único do marcador
-            }
+        selecionados.forEach(m => {
+            m.marker.options.isSelected = true;
+            m.marker.setIcon(createDotIcon(map.getZoom(), true));
+            totalSelecionados.add(m.data.Nome); // Adiciona cada nome único ao Set
         });
     });
 
-    document.getElementById("count").innerText = `Pontos selecionados: ${selectedMarkers.size} | Total: ${markers.length}${measureMode ? ` | Distância Total: ${(totalDistance/1000).toFixed(2)} km` : ''}`;
+    const totalSelecionadosCount = totalSelecionados.size;
+    document.getElementById("count").innerText = `Pontos selecionados: ${totalSelecionadosCount} | Total: ${markers.length}${measureMode ? ` | Distância Total: ${(totalDistance/1000).toFixed(2)} km` : ''}`;
+    console.log(`Pontos selecionados contados: ${totalSelecionadosCount}`); // Para depuração
 }
 
 // Atualizar tooltip do círculo
@@ -216,9 +218,9 @@ function addCircleControl(circle) {
     const circleIndex = circles.length;
     
     circleDiv.innerHTML = `
-        <span>Círculo ${circleIndex} com ${selecionados.length} pontos</span>
-        <button class="export-circle" data-id="${circleIndex - 1}">Exportar</button>
-        <button class="remove-circle" data-id="${circleIndex - 1}">Remover</button>
+        <span>Círculo ${circleIndex + 1} com ${selecionados.length} pontos</span>
+        <button class="export-circle" data-id="${circleIndex}">Exportar</button>
+        <button class="remove-circle" data-id="${circleIndex}">Remover</button>
     `;
     
     document.getElementById("circlesList").appendChild(circleDiv);
